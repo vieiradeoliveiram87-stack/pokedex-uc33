@@ -3,6 +3,28 @@ const $ = (id) => document.getElementById(id);
 
 let numeroAtual = 0;
 
+const traducaoTipos = {
+    normal: 'Normal',
+    fire: 'Fogo',
+    water: 'Água',
+    electric: 'Elétrico',
+    grass: 'Planta',
+    ice: 'Gelo',
+    fighting: 'Lutador',
+    poison: 'Venenoso',
+    ground: 'Terra',
+    flying: 'Voador',
+    psychic: 'Psíquico',
+    bug: 'Inseto',
+    rock: 'Pedra',
+    ghost: 'Fantasma',
+    dragon: 'Dragão',
+    dark: 'Sombrio',
+    steel: 'Aço',
+    fairy: 'Fada'
+  };
+  
+
 // Busca os dados no nosso servidor
 async function pedirPokemon(termo) {
   let resposta;
@@ -48,7 +70,7 @@ function mostrarPokemon(p) {
     ...p.tipos.map((tipo) => {
       const li = document.createElement('li');
 
-      li.textContent = tipo;
+      li.textContent =  traducaoTipos[tipo] ?? tipo;
       li.className = `tipo tipo-${tipo}`;
 
       return li;
@@ -112,3 +134,10 @@ $('proximo').addEventListener('click', () => {
 
 // Mostra o primeiro Pokémon ao abrir
 buscar('1');
+
+
+$('aleatorio').addEventListener('click', () => {
+    const numero = Math.floor(Math.random() * 151) + 1;
+    buscar(String(numero));
+  });
+  
