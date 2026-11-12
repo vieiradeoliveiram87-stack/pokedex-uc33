@@ -1,0 +1,106 @@
+
+const URL_BASE = 'https://pokeapi.co/api/v2';
+const TEMPO_LIMITE_MS = 5000;
+const NOME_VALIDO = /^[a-z0-9-]{1,40}$/;
+
+// Define os dados que nossa API vai devolver
+export interface Pokemon {
+  numero: number;
+  nome: string;
+  tipos: string[];
+  imagem: string | null;
+}
+
+// Define os dados utilizados da PokéAPI
+interface RespostaPokeApi {
+  id: number;
+  name: string;
+  types: { type: { name: string } }[];
+  sprites: { front_default: string | null };
+}
+
+// Guarda os Pokémon pesquisados na memória
+const cache = new Map<string, Pokemon>();
+
+// Classe utilizada para tratar erros
+export class ErroDaApi extends Error {
+  constructor(
+    public readonly status: number,
+    mensagem: string
+  ) {
+    super(mensagem);
+  }
+}
+
+// Valida o nome ou número pesquisado
+function normalizar(termo: string): string {
+  const nome = termo.trim().toLowerCase();
+
+  if (!NOME_VALIDO.test(nome)) {
+    throw new ErroDaApi(
+      400,
+      `Pokémon "${termo}" inválido: use o nome (ex.: pikachu) ou o número (ex.: 25)`
+    );
+  }
+
+  return nome;
+}
+
+// Seleciona apenas os quatro campos necessários
+function resumir(dados: RespostaPokeApi): Pokemon {
+  return {
+    numero: dados.id,
+    nome: dados.name,
+    tipos: dados.types.map((t) => t.type.name),
+    imagem: dados.sprites.front_default,
+  };
+}
+
+// Busca as informações do Pokémon
+export async function buscarPokemon(
+  termo: string
+): Promise<Pokemon> {
+  const nome = normalizar(termo);
+
+  const guardado = cache.get(nome);
+  if (guardado) return guardado;
+
+  let resposta: Response;
+
+  try {
+    resposta = await fetch(
+      `${URL_BASE}/pokemon/${nome}`,
+      {
+        signal: AbortSignal.timeout(TEMPO_LIMITE_MS)
+      }
+    );
+  } catch {
+    throw new ErroDaApi(
+      503,
+      'A PokéAPI não respondeu. Tente de novo em instantes.'
+    );
+  }
+
+  if (resposta.status === 404) {
+    throw new ErroDaApi(
+      404,
+      `Pokémon ${nome} não encontrado`
+    );
+  }
+
+  if (!resposta.ok) {
+    throw new ErroDaApi(
+      503,
+      'A PokéAPI está com problemas. Tente de novo em instantes.'
+    );
+  }
+
+  const pokemon = resumir(
+    (await resposta.json()) as RespostaPokeApi
+  );
+
+  cache.set(nome, pokemon);
+  cache.set(String(pokemon.numero), pokemon);
+
+  return pokemon;
+}
